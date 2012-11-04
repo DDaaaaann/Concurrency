@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "simulate.h"
 
@@ -31,15 +32,36 @@
 double *simulate(const int i_max, const int t_max, const int num_threads,
         double *old_array, double *current_array, double *next_array)
 {
-
-
-
     /*
      * After each timestep, you should swap the buffers around. Watch out none
      * of the threads actually use the buffers at that time.
      */
+    pthread_t thread_ids[i_max];
+    int *num, new_i_max = i_max;
+    void *result;
 
+    for (int i = 0; i < i_max; i++) {
+        int error;
+        num = malloc(sizeof(int));
+        *num = i;
+        if (error = pthread_create(&thread_ids[i], NULL, &calculate, num)) {
+            printf("failed to create thread, errorcode: %d\n", error);
+            new_i_max = i;
+            break;
+        }
+    }
+
+    for(int i = 0; i < new_i_max; i++) {
+        pthread_join(thread_ids[i], &result);
+        free(result);
+    }
 
     /* You should return a pointer to the array with the final results. */
     return current_array;
+}
+
+void *calculate(void *argument) {
+    int thread_num = * (int*) argument;
+    printf("this is thread %d\n", thread_num);
+    return argument;
 }
