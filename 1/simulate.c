@@ -42,11 +42,13 @@ double *simulate(const int i_max, const int t_max, const int num_threads,
     void *result;
     int finished_threads = 0;
     arrays_t *arrays = malloc(sizeof(arrays_t));
+
+    // declare and init mutex stuff
     pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t thread_done = PTHREAD_COND_INITIALIZER,
                    arrays_switched = PTHREAD_COND_INITIALIZER;
 
-    // initialize array struct;
+    // initialize array struct
     next_array = malloc(sizeof(double) * i_max);
     next_array[0] = 0;
     next_array[i_max - 1] = 0;
@@ -55,9 +57,11 @@ double *simulate(const int i_max, const int t_max, const int num_threads,
     arrays->current_array = current_array;
     arrays->next_array = next_array;
 
+    // spawn threads
     for (int i = 0; i < num_threads; i++) {
         int error;
 
+        // fill thread argument struct
         info = malloc(sizeof(calc_info_t));
         info->arrays = arrays;
         info->i_start = i * i_max / num_threads;
@@ -68,6 +72,7 @@ double *simulate(const int i_max, const int t_max, const int num_threads,
         info->thread_done = &thread_done;
         info->arrays_switched = &arrays_switched;
 
+        // edges should not be calculated
         if (info->i_start == 0) {
             info->i_start = 1;
         }
@@ -76,6 +81,7 @@ double *simulate(const int i_max, const int t_max, const int num_threads,
         }
 
 
+        // spawn actual thread
         error = pthread_create(&thread_ids[i], NULL, &calculate, info);
         if (error) {
             return current_array;
@@ -90,7 +96,7 @@ double *simulate(const int i_max, const int t_max, const int num_threads,
         }
 
         // switch arrays around and let the threads know when finished so they
-        // can calculate the next couple;
+        // can calculate the next
         double *temp = old_array;
         arrays->old_array = arrays->current_array;
         arrays->current_array = arrays->next_array;
@@ -100,6 +106,7 @@ double *simulate(const int i_max, const int t_max, const int num_threads,
         pthread_mutex_unlock(&lock);
     }
 
+    // join threads again and free argument stuct memory
     for (int i = 0; i < num_threads; i++) {
         pthread_join(thread_ids[i], &result);
         free(result);
@@ -111,10 +118,13 @@ double *simulate(const int i_max, const int t_max, const int num_threads,
     return arrays->current_array;
 }
 
+// thread code
 void *calculate(void *argument) {
     calc_info_t *info = (calc_info_t*) argument;
     arrays_t *arrays = info->arrays;
+
     for (int j = 0; j < info->t_max; j++) {
+        // calculate the values
         for (int i = info->i_start; i < info->i_end; i++) {
             arrays->next_array[i] = 2 * arrays->current_array[i] -
                 arrays->old_array[i] + 0.2 * (arrays->current_array[i-1] -
@@ -122,8 +132,8 @@ void *calculate(void *argument) {
         }
 
 
-        // wait for the rest of the thread to finish and the main thread to
-        // switch the arrays around
+        // let the main thread know another thread has finished and wait until
+        // it has switched around the arrays
 
         pthread_mutex_lock(info->lock);
         *(info->finished_threads) += 1;
