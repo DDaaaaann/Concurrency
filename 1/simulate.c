@@ -4,9 +4,6 @@
  * Implement your (parallel) simulation here!
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
 
 #include "simulate.h"
 
@@ -43,56 +40,96 @@ double *simulate(const int i_max, const int t_max, const int num_threads,
     pthread_t thread_ids[num_threads];
     calc_info_t *info;
     void *result;
+    int finished_threads = 0;
+    arrays_t *arrays = malloc(sizeof(arrays_t));
+    pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t thread_done = PTHREAD_COND_INITIALIZER,
+                   arrays_switched = PTHREAD_COND_INITIALIZER;
 
-    for (int j = 0; j < t_max; j++) {
-        next_array[0] = 0;
-        next_array[i_max - 1] = 0;
-        for (int i = 0; i < num_threads; i++) {
-            int error;
+    // initialize array struct;
+    next_array = malloc(sizeof(double) * i_max);
+    next_array[0] = 0;
+    next_array[i_max - 1] = 0;
 
-            info = malloc(sizeof(calc_info_t));
-            info->old_array = old_array;
-            info->current_array = current_array;
-            info->next_array = next_array;
-            info->i_start = i * i_max / num_threads;
-            info->i_end = (i + 1) * i_max / num_threads;
+    arrays->old_array = old_array;
+    arrays->current_array = current_array;
+    arrays->next_array = next_array;
 
-            if (info->i_start == 0) {
-                info->i_start = 1;
-            }
-            if (info->i_end == i_max) {
-                info->i_end = i_max - 1;
-            }
+    for (int i = 0; i < num_threads; i++) {
+        int error;
 
+        info = malloc(sizeof(calc_info_t));
+        info->arrays = arrays;
+        info->i_start = i * i_max / num_threads;
+        info->i_end = (i + 1) * i_max / num_threads;
+        info->t_max = t_max;
+        info->finished_threads = &finished_threads;
+        info->lock = &lock;
+        info->thread_done = &thread_done;
+        info->arrays_switched = &arrays_switched;
 
-            error = pthread_create(&thread_ids[i], NULL, &calculate, info);
-            if (error) {
-                printf("failed to create thread, errorcode: %d\n", error);
-                return current_array;
-            }
+        if (info->i_start == 0) {
+            info->i_start = 1;
+        }
+        if (info->i_end == i_max) {
+            info->i_end = i_max - 1;
         }
 
-        for(int i = 0; i < num_threads; i++) {
-            pthread_join(thread_ids[i], &result);
-            free(result);
-        }
 
-        free(old_array);
-        old_array = current_array;
-        current_array = next_array;
-        next_array = malloc(sizeof(double) * i_max);
+        error = pthread_create(&thread_ids[i], NULL, &calculate, info);
+        if (error) {
+            return current_array;
+        }
     }
 
+    for (int i = 0; i < t_max; i++) {
+        // wait until all threads have finished filling of next_array
+        pthread_mutex_lock(&lock);
+        while (finished_threads < num_threads) {
+            pthread_cond_wait(&thread_done, &lock);
+        }
+
+        // switch arrays around and let the threads know when finished so they
+        // can calculate the next couple;
+        double *temp = old_array;
+        arrays->old_array = arrays->current_array;
+        arrays->current_array = arrays->next_array;
+        arrays->next_array = arrays->old_array;
+        finished_threads = 0;
+        pthread_cond_broadcast(&arrays_switched);
+        pthread_mutex_unlock(&lock);
+    }
+
+    for (int i = 0; i < num_threads; i++) {
+        pthread_join(thread_ids[i], &result);
+        free(result);
+    }
+
+
     /* You should return a pointer to the array with the final results. */
-    return current_array;
+
+    return arrays->current_array;
 }
 
 void *calculate(void *argument) {
     calc_info_t *info = (calc_info_t*) argument;
-    double *current_array = info->current_array, *old_array = info->old_array;
-    for (int i = info->i_start; i < info->i_end; i++) {
-        info->next_array[i] = 2 * current_array[i] - old_array[i] + 0.2 *
-            (current_array[i-1] - (2 * current_array[i] - current_array[i+1]));
+    arrays_t *arrays = info->arrays;
+    for (int j = 0; j < info->t_max; j++) {
+        for (int i = info->i_start; i < info->i_end; i++) {
+            arrays->next_array[i] = 2 * arrays->current_array[i] -
+                arrays->old_array[i] + 0.2 * (arrays->current_array[i-1] -
+                (2 * arrays->current_array[i] - arrays->current_array[i+1]));
+        }
+
+
+        // wait for the rest of the thread to finish and the main thread to
+        // switch the arrays around
+
+        pthread_mutex_lock(info->lock);
+        *(info->finished_threads) += 1;
+        pthread_cond_signal(info->thread_done);
+        pthread_cond_wait(info->arrays_switched, info->lock);
+        pthread_mutex_unlock(info->lock);
     }
     return argument;
 }
