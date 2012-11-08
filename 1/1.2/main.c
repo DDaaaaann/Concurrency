@@ -82,7 +82,7 @@ void *thread_routine(void *a)
     {
         int number;
         pthread_mutex_lock(from_prod->buflock);
-        while(!(from_prod->used > 0))
+        while(from_prod->used == 0)
         {
             pthread_cond_wait(from_prod->items, from_prod->buflock);
         }
@@ -96,6 +96,7 @@ void *thread_routine(void *a)
             from_prod->used --;
             //printf("Prime found: %d\n", prime);
             printf("%d ", prime);
+            pthread_cond_signal(from_prod->space);
             pthread_mutex_unlock(from_prod->buflock);
             continue;
         }
@@ -103,6 +104,7 @@ void *thread_routine(void *a)
         from_prod->nextout ++;
         from_prod->nextout %= BUFSIZE;
         from_prod->used --;
+        pthread_cond_signal(from_prod->space);
         pthread_mutex_unlock(from_prod->buflock);
         if(number % prime == 0)
         {
@@ -117,7 +119,7 @@ void *thread_routine(void *a)
         }
         pthread_mutex_lock(to_cons->buflock);
         //printf("testje.\n");
-        while(!(to_cons->used < BUFSIZE))
+        while(to_cons->used == BUFSIZE)
         {
             pthread_cond_wait(to_cons->space, to_cons->buflock);
         }
