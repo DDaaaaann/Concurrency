@@ -19,7 +19,7 @@ clean:
 	$(RM) *.o $(PROGNAME) $(PROGNAME)-$(VERSION).tbz
 
 run: $(PROGNAME)
-	`pwd`/$(PROGNAME)
+	./$(PROGNAME)
 
 tarball: $(PROGNAME)
 	$(MAKE) clean
