@@ -23,5 +23,17 @@ threads it reaches a speedup of a little above five.
 \includegraphics[width=\textwidth]{speedupgraph.png}
 
 \section{Assignment 1.2}
-This is where I, David, will add my findings regarding assignment 1.2.
+Assignment 1.2 is a program generating an infinite stream of prime numbers,
+using the sieve of Eratosthenes. When the program is executed, one main tread
+is created. This main thread generates a stream of natural numbers, which are
+passed to the next thread. This thread takes the first number of this stream,
+which is a 2 for the first "slave-thread". For a slave thread, there are three
+options: the number which will be processed is the first number that enters the
+thread, which means it is a prime number. This number will then be printed and
+the next number will be processed. If the next number can be divided trough the
+prime number, it is discarded. When it can't be divided, the number is possibly
+a prime number and it will be passed to the next thread. \\ \\
+All thread communicate with each other trough a buffer, locked with mutexes to
+prevent errors. To ensure all printing will be done, after printing each prime
+the stdout buffer will be flushed.
 \end {document}

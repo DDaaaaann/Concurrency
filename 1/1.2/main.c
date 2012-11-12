@@ -116,7 +116,8 @@ void *thread_routine(void *a)
             from_prod->nextout %= BUFSIZE;
             from_prod->used --;
             /* It's a prime! */
-            printf("%d\n", prime);
+            printf("%d ", prime);
+            fflush(stdout);
             pthread_cond_signal(from_prod->space);
             pthread_mutex_unlock(from_prod->buflock);
             continue;
