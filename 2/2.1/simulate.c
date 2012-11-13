@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include "simulate.h"
+#include "mpi.h"
 
 
 /* Add any global variables you may need. */
@@ -30,11 +31,118 @@
 double *simulate(const int i_max, const int t_max, double *old_array,
         double *current_array, double *next_array)
 {
+    int *argc, num_tasks, my_rank, rc, local_size, left, right;
+    double *cur, *old, *new;
+    char ***argv;
+    MPI_Request request;
+    MPI_Status status;
 
-    /*
-     * Your implementation should go here.
-     */
+    if ((rc = MPI_Init(argc, argv)) != MPI_SUCCESS) {
+        fprintf(stderr, "Unable to setup MPI");
+
+        MPI_Abort(MPI_COMM_WORLD, rc);
+    }
+
+    MPI_Comm_size(MPI_COMM_WORLD, &num_tasks); // Determine number of tasks
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank); // Determine task id
+
+    local_size = i_max / num_tasks;
+    left = my_rank - 1;
+    right = my_rank + 1;
+    cur = malloc(sizeof(double) * (local_size + 2));
+    old = malloc(sizeof(double) * (local_size + 2));
+    new = malloc(sizeof(double) * (local_size + 2));
+    printf("%d\n", MPI_TAG_UB);
+
+    // Master sends data and workers receive it
+    if (!my_rank) {
+        for (int i = 1; i < num_tasks; i++) {
+            MPI_Isend(old_array + (local_size * i), local_size, MPI_DOUBLE, i,
+                    0, MPI_COMM_WORLD, &request);
+            MPI_Request_free(&request);
+            MPI_Isend(current_array + (local_size * i), local_size, MPI_DOUBLE,
+                    i, 1, MPI_COMM_WORLD, &request);
+            MPI_Request_free(&request);
+            printf("%d\n", i * local_size);
+        }
+
+        free(old);
+        free(cur);
+        free(new);
+        old = old_array;
+        cur = current_array;
+        new = next_array;
+        new[0] = 0;
+        new[i_max - 1] = 0;
+    }
+    else {
+        MPI_Recv(old + 1, local_size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,
+                &status);
+        MPI_Recv(cur + 1, local_size, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD,
+                &status);
+    }
+
+    if (my_rank == num_tasks - 1) {
+        new[local_size + 1] = 0;
+    }
+
+    // Calculate stuff, send halo cells and switch over arrays
+    for (int t = 2; t <= t_max; t++) {
+        double *temp;
+        // Sending halo cells
+        if (my_rank) {
+            //printf("sending: %e, t: %d\n", cur[1], t);
+            MPI_Isend(cur + 1, 1, MPI_DOUBLE, left, t, MPI_COMM_WORLD,
+                    &request);
+            MPI_Request_free(&request);
+        }
+        if (my_rank != num_tasks - 1) {
+            MPI_Isend(cur + local_size, 1, MPI_DOUBLE, right, t,
+                    MPI_COMM_WORLD, &request);
+            MPI_Request_free(&request);
+        }
+
+        // Receiving halo cells
+        if (my_rank != num_tasks - 1) {
+            MPI_Recv(cur + local_size + 1, 1, MPI_DOUBLE, right, t,
+                    MPI_COMM_WORLD, &status);
+            //printf("received: %e, t: %d\n", cur[ ], t);
+        }
+        if (my_rank) {
+            MPI_Recv(cur, 1, MPI_DOUBLE, left, t, MPI_COMM_WORLD, &status);
+        }
+
+        for (int i = 1; i <= local_size; i++) {
+            new[i] = 2 * cur[i] - old[i] + 0.2 * (cur[i-1] -
+                    (2 * cur[i] - cur [i + 1]));
+        }
+
+        temp = old;
+        old = cur;
+        cur = new;
+        new = temp;
+
+    }
+    if (my_rank) {
+        MPI_Send(cur + 1, local_size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+        MPI_Finalize();
+        exit(0);
+    }
+    else {
+        for (int i = 1; i < num_tasks; i++) {
+            MPI_Recv(cur + (i * local_size), local_size, MPI_DOUBLE, i, 0,
+                    MPI_COMM_WORLD, &status);
+        }
+    }
+
+
+
+
+
+    MPI_Finalize(); // Shutdown MPI runtime
 
     /* You should return a pointer to the array with the final results. */
-    return current_array;
+    return cur;
 }
+
+

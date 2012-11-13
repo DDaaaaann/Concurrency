@@ -2,9 +2,9 @@ PROGNAME = assign2_1
 SRCFILES = assign2_1.c file.c timer.c simulate.c
 TARNAME = assign2_1.tgz
 
-RUNARGS = 1000 10 # i_max t_max, increase this when testing on the DAS4!
+RUNARGS = 10000 1000 # i_max t_max, increase this when testing on the DAS4!
 NODES = 1 # How many DAS4 nodes
-PROCESSESPERNODE = 1 # How many processes to spawn on one machine.
+PROCESSESPERNODE = 16 # How many processes to spawn on one machine.
 
 PRUNARGS = -v -np $(NODES) -$(PROCESSESPERNODE) \
 		   -sge-script $$PRUN_ETC/prun-openmpi
