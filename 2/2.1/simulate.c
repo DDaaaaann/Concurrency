@@ -52,7 +52,6 @@ double *simulate(const int i_max, const int t_max, double *old_array,
     cur = malloc(sizeof(double) * (local_size + 2));
     old = malloc(sizeof(double) * (local_size + 2));
     new = malloc(sizeof(double) * (local_size + 2));
-    printf("%d\n", MPI_TAG_UB);
 
     // Master sends data and workers receive it
     if (!my_rank) {
@@ -63,7 +62,6 @@ double *simulate(const int i_max, const int t_max, double *old_array,
             MPI_Isend(current_array + (local_size * i), local_size, MPI_DOUBLE,
                     i, 1, MPI_COMM_WORLD, &request);
             MPI_Request_free(&request);
-            printf("%d\n", i * local_size);
         }
 
         free(old);
@@ -91,7 +89,6 @@ double *simulate(const int i_max, const int t_max, double *old_array,
         double *temp;
         // Sending halo cells
         if (my_rank) {
-            //printf("sending: %e, t: %d\n", cur[1], t);
             MPI_Isend(cur + 1, 1, MPI_DOUBLE, left, t, MPI_COMM_WORLD,
                     &request);
             MPI_Request_free(&request);
@@ -106,7 +103,6 @@ double *simulate(const int i_max, const int t_max, double *old_array,
         if (my_rank != num_tasks - 1) {
             MPI_Recv(cur + local_size + 1, 1, MPI_DOUBLE, right, t,
                     MPI_COMM_WORLD, &status);
-            //printf("received: %e, t: %d\n", cur[ ], t);
         }
         if (my_rank) {
             MPI_Recv(cur, 1, MPI_DOUBLE, left, t, MPI_COMM_WORLD, &status);
