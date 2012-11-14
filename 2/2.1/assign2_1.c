@@ -171,8 +171,6 @@ int main(int argc, char *argv[])
     /* Call the actual simulation that should be implemented in simulate.c. */
     ret = simulate(local_size, t_max, num_tasks, my_rank, old, cur, new);
 
-    time = timer_end();
-
     if (my_rank) {
         MPI_Send(ret + 1, local_size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
         MPI_Finalize();
@@ -187,6 +185,8 @@ int main(int argc, char *argv[])
     }
 
     MPI_Finalize(); // Shutdown MPI runtime
+
+    time = timer_end();
 
     printf("Took %g seconds\n", time);
     printf("Normalized: %g seconds\n", time / (1. * i_max * t_max));
