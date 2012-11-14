@@ -4,16 +4,12 @@
  * By David van Erkelens and Jelte Fennema
  * Department Of Computer Science
  * University of Amsterdam
+ *
+ * As published on github.com/David1209
  */
 
-/*
- * To implement:
- * int MYMPI_Bcast(void *buffer,            Buffer address, INOUT
- *                 int count,               Buffer size, IN
- *                 MPI_Datatype datatype,   Entry datatype, IN
- *                 int root,                Root process, IN
- *                 MPI_Comm communicator)   Communicator, IN
- */
+// TODO: - Cleanup
+//       - Commenting
 
 #include <stdlib.h>
 #include <stdio.h>
