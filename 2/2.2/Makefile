@@ -1,6 +1,4 @@
-OLD MAKEFILE, NEEDS MPI UPDATING!
-
-PROGNAME=prime_generator
+PROGNAME=mpi_broadcast
 VERSION=1.0
 
 MKDIR=mkdir
@@ -9,6 +7,7 @@ CC=mpicc
 CFLAGS=-Wall -pedantic -std=c99 -lm
 CP=cp
 RM=rm -rf
+PROCESSES = 40
 OFILES=$(subst .c,.o,$(wildcard *.c))
 
 $(PROGNAME): $(OFILES)
@@ -21,7 +20,7 @@ clean:
 	$(RM) *.o $(PROGNAME) $(PROGNAME)-$(VERSION).tbz
 
 run: $(PROGNAME)
-	./$(PROGNAME)
+	mpirun -n $(PROCESSES) ./$(PROGNAME)
 
 tarball: $(PROGNAME)
 	$(MAKE) clean
