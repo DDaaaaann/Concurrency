@@ -2,7 +2,7 @@ PROGNAME = assign3_1
 SRCFILES = assign3_1.c file.c timer.c simulate.c
 TARNAME = assign3_1.tgz
 
-RUNARGS = 10000000 10 1 # i_max t_max num_threads, increase this when testing on the DAS4!
+RUNARGS = 10000 10 1 0 1 # i_max t_max num_threads, increase this when testing on the DAS4!
 
 IMAGEVIEW = display
 CC = gcc
