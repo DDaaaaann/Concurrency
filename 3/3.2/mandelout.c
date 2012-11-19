@@ -82,6 +82,7 @@ int main(void)
 	        zx = new_zx;
 	        n++;
             }
+            fprintf(stdout, "%d ", n);
         }
         cy += dxy;
     }
