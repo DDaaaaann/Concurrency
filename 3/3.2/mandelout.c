@@ -82,7 +82,7 @@ int main(void)
 	        zx = new_zx;
 	        n++;
             }
-            fprintf(stdout, "%d ", n);
+            fprintf(stdout, "%d\n", n);
         }
         cy += dxy;
     }
@@ -100,6 +100,8 @@ int main(void)
     {
         ny++;
     }
+    fflush(stdout);
+    fprintf(stderr, "\n");
     time = timer_end();
     fprintf(stderr, "The program took %g seconds.\n", time);
     fprintf (stderr, "To process the image: convert -depth 8 -size %dx%d "
