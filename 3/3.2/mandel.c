@@ -67,7 +67,8 @@ int main(void)
     timer_start();
     cy = yMin;
     iter = (int)(yMax - yMin) / dxy;
-    #pragma omp parallel for private(cx, zx, zy, n, new_zx) firstprivate(cy)
+    #pragma omp parallel for ordered private(cx, zx, zy, n, new_zx) \
+        firstprivate(cy)
     for (i = 0; i < iter; i++)
     {
         for (cx = xMin; cx < xMax; cx += dxy)
@@ -75,7 +76,6 @@ int main(void)
             zx = 0.0;
             zy = 0.0;
             n = 0;
-            #pragma omp while ordered
             while ((zx*zx + zy*zy < 4.0) && (n != UCHAR_MAX))
             {
                 new_zx = zx*zx - zy*zy + cx;
@@ -83,7 +83,7 @@ int main(void)
 	            zx = new_zx;
 	            n++;
             }
-            fprintf(stdout, "%d\n", n);
+            //fprintf(stdout, "%d\n", n);
         }
         cy += dxy;
     }
@@ -103,8 +103,8 @@ int main(void)
     }
     time = timer_end();
     fprintf(stderr, "The program took %g seconds.\n", time);
-    fprintf (stderr, "To process the image: convert -depth 8 -size %dx%d "
-            "gray:output out.jpg\n", nx, ny);
+    //fprintf (stderr, "To process the image: convert -depth 8 -size %dx%d "
+    //        "gray:output out.jpg\n", nx, ny);
     return 0;
 }
 
