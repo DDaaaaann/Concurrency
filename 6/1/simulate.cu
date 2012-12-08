@@ -39,6 +39,9 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
 
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int t_id = threadIdx.x;
+    if (t_id == 0) {
+        printf("IIIII caaaaaaaaannnnnnnnnnnn beeeeeeeeee 0");
+    }
 
     if (i >= t_max) {
         printf("too large i = %d   t_id = %d timestep = %d\n", i, t_id, timestep);
@@ -58,7 +61,7 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
 
     printf("Got past threadsyncing i = %d   t_id = %d  tp=%d\n", i, t_id, timestep);
 
-    if (t_id == 0) {
+    if (t_id == 1) {
         printf("Got in first if i = %d   t_id = %d  tp=%d\n", i, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
