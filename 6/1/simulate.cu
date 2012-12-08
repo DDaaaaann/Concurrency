@@ -33,7 +33,7 @@ static void checkCudaCall(cudaError_t result) {
 }
 
 __global__ void calculate_next(double *dev_old, double *dev_cur,
-        double *dev_new, int t_max, int block_size) {
+        double *dev_new, int t_max, const int block_size) {
 
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int t_id = threadIdx.x;
