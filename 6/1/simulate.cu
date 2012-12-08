@@ -52,15 +52,15 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
 
     if (t_id == 0) {
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
-                (2 = s_cur[t_id] - s_cur[t_id + 1]));
+                (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
     else if (t_id == BLOCK_SIZE - 1) {
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
-                (2 = s_cur[t_id] - s_cur[t_id + 1]));
+                (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
     else {
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
-                (2 = s_cur[t_id] - s_cur[t_id + 1]));
+                (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
 }
 
@@ -75,7 +75,7 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
  * old_array: array of size i_max filled with data for t-1
  * current_array: array of size i_max filled with data for t
  * next_array: array of size i_max. You should fill this with t+1
- */:
+ */
 double *simulate(const int i_max, const int t_max, const int block_size,
         double *old_array, double *current_array, double *next_array)
 {
@@ -111,7 +111,7 @@ double *simulate(const int i_max, const int t_max, const int block_size,
         double *temp = dev_old;
         dev_old = dev_cur;
         dev_cur = dev_new;
-        dev_new = dev_old;
+        dev_new = temp;
     }
 
     cudaEventRecord(stop, 0);
@@ -132,7 +132,7 @@ double *simulate(const int i_max, const int t_max, const int block_size,
     float elapsedTime;
     cudaEventElapsedTime(&elapsedTime, start, stop);
 
-    cout << "kernel invocation took " << elapsedTime << " milliseconds" << endl;
+    printf("kernel invocation took %f milliseconds\n", elapsedTime);
 
     return current_array;
 }
@@ -177,7 +177,6 @@ int main(int argc, char *argv[])
     double *old, *current, *next;
     int t_max, i_max, block_size;
     timer vectorAddTimer("vector add timer");
-    double time;
 
     /* Parse commandline args: i_max t_max block_size */
     if (argc < 4) {
@@ -216,9 +215,9 @@ int main(int argc, char *argv[])
     }
 
     /* Allocate and initialize buffers. */
-    old = malloc(i_max * sizeof(double));
-    current = malloc(i_max * sizeof(double));
-    next = malloc(i_max * sizeof(double));
+    old = (double *) malloc(i_max * sizeof(double));
+    current = (double *) malloc(i_max * sizeof(double));
+    next = (double *) malloc(i_max * sizeof(double));
 
     if (old == NULL || current == NULL || next == NULL) {
         fprintf(stderr, "Could not allocate enough memory, aborting.\n");
@@ -264,7 +263,7 @@ int main(int argc, char *argv[])
 
     vectorAddTimer.stop();
 
-    cout << vectorAddTimer;
+    //printf("second timer: %f\n", vectorAddTimer);
 
     file_write_double_array("result.txt", current, i_max);
 
