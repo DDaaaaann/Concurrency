@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <iostream>
 
 #include "file.h"
 #include "timer.h"
@@ -83,6 +84,11 @@ double *simulate(const int i_max, const int t_max, const int block_size,
     checkCudaCall(cudaMalloc(&dev_cur, t_max * sizeof(double)));
     checkCudaCall(cudaMalloc(&dev_new, t_max * sizeof(double)));
 
+    // add events to maxe the time correct
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
     // copy data to the vectors
     checkCudaCall(cudaMemcpy(dev_old, old_array, t_max * sizeof(double),
             cudaMemcpyHostToDevice));
@@ -91,6 +97,8 @@ double *simulate(const int i_max, const int t_max, const int block_size,
     checkCudaCall(cudaMemcpy(dev_new, next_array, t_max * sizeof(double),
             cudaMemcpyHostToDevice));
 
+
+    cudaEventRecord(start, 0);
 
     for (int i = 1; i < i_max; i++) {
         // execute kernel
@@ -104,6 +112,8 @@ double *simulate(const int i_max, const int t_max, const int block_size,
         dev_new = dev_old;
     }
 
+    cudaEventRecord(stop, 0);
+
     // check whether the kernel invocation was successful
     checkCudaCall(cudaGetLastError());
 
@@ -111,7 +121,16 @@ double *simulate(const int i_max, const int t_max, const int block_size,
     checkCudaCall(cudaMemcpy(current_array, dev_cur, t_max * sizeof(double),
             cudaMemcpyDeviceToHost));
 
+    checkCudaCall(cudaFree(dev_old));
+    checkCudaCall(cudaFree(dev_cur));
+    checkCudaCall(cudaFree(dev_new));
+
     /* You should return a pointer to the array with the final results. */
+
+    float elapsedTime;
+    cudaEventElapsedTime(&elapsedTime, start, stop);
+
+    cout << "kernel invocation took " << elapsedTime << " milliseconds" << endl;
 
     return current_array;
 }
@@ -155,6 +174,7 @@ int main(int argc, char *argv[])
 {
     double *old, *current, *next;
     int t_max, i_max, block_size;
+    timer vectorAddTimer("vector add timer");
     double time;
 
     /* Parse commandline args: i_max t_max block_size */
@@ -235,14 +255,14 @@ int main(int argc, char *argv[])
         fill(current, 2, i_max/4, 0, 2*3.14, sin);
     }
 
-    timer_start();
+    vectorAddTimer.start();
 
     /* Call the actual simulation that should be implemented in simulate.c. */
     simulate(i_max, t_max, block_size, old, current, next);
 
-    time = timer_end();
-    printf("Took %g seconds\n", time);
-    printf("Normalized: %g seconds\n", time / (i_max * t_max));
+    vectorAddTimer.stop();
+
+    cout << vectorAddTimer;
 
     file_write_double_array("result.txt", current, i_max);
 
