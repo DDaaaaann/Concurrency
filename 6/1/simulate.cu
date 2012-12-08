@@ -35,46 +35,46 @@ static void checkCudaCall(cudaError_t result) {
 }
 
 __global__ void calculate_next(double *dev_old, double *dev_cur,
-        double *dev_new, int t_max) {
+        double *dev_new, int t_max, int timestep) {
 
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int t_id = threadIdx.x;
 
     if (i >= t_max) {
-        printf("too large i = %d   t_id = %d \n", i, t_id);
+        printf("too large i = %d   t_id = %d timestep = %d\n", i, t_id, timestep);
         return;
     }
 
-    printf("Got past sizechecking i = %d   t_id = %d \n", i, t_id);
+    printf("Got past sizechecking i = %d   t_id = %d tp= %d\n", i, t_id, timestep);
 
     __shared__ double s_cur[BLOCK_SIZE];
 
-    printf("Got past creating shared thing i = %d   t_id = %d \n", i, t_id);
+    printf("Got past creating shared thing i = %d   t_id = %d  tp=%d\n", i, t_id, timestep);
 
     s_cur[t_id] = dev_cur[i];
-    printf("Got past filling shared i = %d   t_id = %d \n", i, t_id);
+    printf("Got past filling shared i = %d   t_id = %d  tp=%d\n", i, t_id, timestep);
 
     __syncthreads();
 
-    printf("Got past threadsyncing i = %d   t_id = %d \n", i, t_id);
+    printf("Got past threadsyncing i = %d   t_id = %d  tp=%d\n", i, t_id, timestep);
 
     if (t_id == 0) {
-        printf("Got in first if i = %d   t_id = %d \n", i, t_id);
+        printf("Got in first if i = %d   t_id = %d  tp=%d\n", i, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
     else if (t_id == BLOCK_SIZE - 1) {
-        printf("Got in second if i = %d   t_id = %d \n", i, t_id);
+        printf("Got in second if i = %d   t_id = %d  tp=%d\n", i, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
     else {
-        printf("Got in third if i = %d   t_id = %d \n", i, t_id);
+        printf("Got in third if i = %d   t_id = %d  tp=%d\n", i, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
 
-    printf("Got past calculating i = %d   t_id = %d \n", i, t_id);
+    printf("Got past calculating i = %d   t_id = %d  tp=%d\n", i, t_id, timestep);
 
 }
 
@@ -129,7 +129,7 @@ double *simulate(const int i_max, const int t_max, const int block_size,
         printf("Got in for loop \n");
         // execute kernel
         calculate_next<<<ceil((double)t_max/block_size), block_size>>>(dev_old,
-                dev_cur, dev_new, t_max);
+                dev_cur, dev_new, t_max, i);
 
         printf("Calculated for i = %d \n", i);
 
