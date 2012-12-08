@@ -128,11 +128,10 @@ double *simulate(const int i_max, const int t_max, const int block_size,
     for (int i = 1; i < i_max; i++) {
         printf("Got in for loop \n");
         // execute kernel
-        calculate_next<<<ceil((double)t_max/block_size), block_size>>>(dev_old,
-                dev_cur, dev_new, t_max, i);
+        calculate_next<<<ceil((double)t_max/block_size), block_size>>>(
+                dev_old + 1, dev_cur + 1, dev_new + 1, t_max - 2, i);
 
         printf("Calculated for i = %d \n", i);
-        cudaThreadSynchronize();
 
         // switch pointers over
         double *temp = dev_old;
