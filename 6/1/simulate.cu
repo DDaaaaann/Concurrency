@@ -15,6 +15,8 @@
 #include "simulate.h"
 #include "simulate.h"
 
+#define BLOCK_SIZE 512
+
 /* Utility function, use to do error checking.
 
    Use this function like this:
@@ -33,7 +35,7 @@ static void checkCudaCall(cudaError_t result) {
 }
 
 __global__ void calculate_next(double *dev_old, double *dev_cur,
-        double *dev_new, int t_max, const int block_size) {
+        double *dev_new, int t_max) {
 
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int t_id = threadIdx.x;
@@ -42,7 +44,7 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
         return;
     }
 
-    __shared__ double s_cur[block_size];
+    __shared__ double s_cur[BLOCK_SIZE];
 
     s_cur[t_id] = dev_cur[i];
 
@@ -52,7 +54,7 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
                 (2 = s_cur[t_id] - s_cur[t_id + 1]));
     }
-    else if (t_id == block_size - 1) {
+    else if (t_id == BLOCK_SIZE - 1) {
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
                 (2 = s_cur[t_id] - s_cur[t_id + 1]));
     }
