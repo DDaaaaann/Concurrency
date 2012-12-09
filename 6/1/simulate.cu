@@ -131,6 +131,8 @@ double *simulate(const int i_max, const int t_max, const int block_size,
 
         cudaThreadSynchronize();
 
+        printf("Got past synchronize \n");
+
         // switch pointers over
         double *temp = dev_old;
         dev_old = dev_cur;
@@ -139,18 +141,28 @@ double *simulate(const int i_max, const int t_max, const int block_size,
         printf("switched arrays for i = %d \n", i);
     }
 
+    printf("Got past cudaEventRecord \n");
+
     cudaEventRecord(stop, 0);
+
+    printf("Got past stop \n");
 
     // check whether the kernel invocation was successful
     checkCudaCall(cudaGetLastError());
+
+    printf("Got past kernelcheck \n");
 
     // copy results back
     checkCudaCall(cudaMemcpy(current_array, dev_cur, t_max * sizeof(double),
             cudaMemcpyDeviceToHost));
 
+    printf("Got past memcpy \n");
+
     checkCudaCall(cudaFree(dev_old));
     checkCudaCall(cudaFree(dev_cur));
     checkCudaCall(cudaFree(dev_new));
+
+    printf("Got past memfree \n");
 
     /* You should return a pointer to the array with the final results. */
 
