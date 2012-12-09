@@ -37,7 +37,7 @@ static void checkCudaCall(cudaError_t result) {
 __global__ void calculate_next(double *dev_old, double *dev_cur,
         double *dev_new, int t_max, int timestep) {
 
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
     unsigned int t_id = threadIdx.x;
     if (t_id < 2 || t_id > BLOCK_SIZE - 2) {
         printf("IIIII caaaaaaaaannnnnnnnnnnn beeeeeeeeee %d\n", t_id);
@@ -69,12 +69,12 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
     }
     else if (t_id == BLOCK_SIZE - 1) {
         printf("Got in second if i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
-        dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
-                (2 * s_cur[t_id] - s_cur[t_id + 1]));
+        dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (s_cur[t_id - 1] -
+                (2 * s_cur[t_id] - dev_cur[i + 1]));
     }
     else {
         printf("Got in third if i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
-        dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
+        dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (s_cur[t_id - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
 
@@ -133,7 +133,7 @@ double *simulate(const int i_max, const int t_max, const int block_size,
         printf("Got in for loop \n");
         // execute kernel
         calculate_next<<<ceil((double)t_max/block_size), block_size>>>(
-                dev_old + 1, dev_cur + 1, dev_new + 1, t_max - 2, i);
+                dev_old, dev_cur, dev_new, t_max - 1, i);
 
         printf("Calculated for i = %d \n", i);
 
