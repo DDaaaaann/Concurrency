@@ -39,34 +39,46 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
 
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
     unsigned int t_id = threadIdx.x;
-    printf("testprint\n");
-
-
-    if (i >= t_max) {
-        return;
+    if (t_id < 2 || t_id > BLOCK_SIZE - 2) {
+        printf("IIIII caaaaaaaaannnnnnnnnnnn beeeeeeeeee %d\n", t_id);
     }
 
 
+    if (i >= t_max) {
+        printf("too large i = %d   t_id = %d timestep = %d\n", blockIdx.x, t_id, timestep);
+        return;
+    }
+
+    printf("Got past sizechecking i = %d   t_id = %d tp= %d\n", blockIdx.x, t_id, timestep);
+
     __shared__ double s_cur[BLOCK_SIZE];
 
+    printf("Got past creating shared thing i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
 
     s_cur[t_id] = dev_cur[i];
+    printf("Got past filling shared i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
 
     __syncthreads();
 
+    printf("Got past threadsyncing i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
 
     if (t_id == 0) {
+        printf("Got in first if i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
     else if (t_id == BLOCK_SIZE - 1) {
+        printf("Got in second if i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (s_cur[t_id - 1] -
                 (2 * s_cur[t_id] - dev_cur[i + 1]));
     }
     else {
+        printf("Got in third if i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (s_cur[t_id - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
+
+    printf("Got past calculating i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
 
 }
 
@@ -85,6 +97,7 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
 double *simulate(const int i_max, const int t_max, const int block_size,
         double *old_array, double *current_array, double *next_array)
 {
+    printf("Got in simulation \n");
     double *dev_old, *dev_cur, *dev_new;
     printf("Got past declaring variables \n");
 
@@ -117,18 +130,21 @@ double *simulate(const int i_max, const int t_max, const int block_size,
     printf("Got past cudaEventRecord \n");
 
     for (int i = 1; i < i_max; i++) {
+        printf("Got in for loop \n");
         // execute kernel
         calculate_next<<<ceil((double)t_max/block_size), block_size>>>(
                 dev_old, dev_cur, dev_new, t_max - 1, i);
 
-        cudaThreadSynchronize();
+        printf("Calculated for i = %d \n", i);
 
+        cudaThreadSynchronize();
 
         // switch pointers over
         double *temp = dev_old;
         dev_old = dev_cur;
         dev_cur = dev_new;
         dev_new = temp;
+        printf("switched arrays for i = %d \n", i);
     }
 
     cudaEventRecord(stop, 0);
