@@ -35,7 +35,7 @@ static void checkCudaCall(cudaError_t result) {
 }
 
 __global__ void calculate_next(double *dev_old, double *dev_cur,
-        double *dev_new, int t_max, int timestep) {
+        double *dev_new, int i_max, int timestep) {
 
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
     unsigned int t_id = threadIdx.x;
@@ -43,7 +43,7 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
     }
 
 
-    if (i >= t_max) {
+    if (i >= i_max) {
         return;
     }
 
@@ -57,17 +57,14 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
 
 
     if (t_id == 0) {
-        printf("Got in first if i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
     else if (t_id == BLOCK_SIZE - 1) {
-        printf("Got in second if i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (s_cur[t_id - 1] -
                 (2 * s_cur[t_id] - dev_cur[i + 1]));
     }
     else {
-        printf("Got in third if i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (s_cur[t_id - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
@@ -94,24 +91,24 @@ double *simulate(const int i_max, const int t_max, const int block_size,
     printf("Got past declaring variables \n");
 
     // allocate the vectors on the GPU
-    checkCudaCall(cudaMalloc(&dev_old, t_max * sizeof(double)));
-    checkCudaCall(cudaMalloc(&dev_cur, t_max * sizeof(double)));
-    checkCudaCall(cudaMalloc(&dev_new, t_max * sizeof(double)));
+    checkCudaCall(cudaMalloc(&dev_old, i_max * sizeof(double)));
+    checkCudaCall(cudaMalloc(&dev_cur, i_max * sizeof(double)));
+    checkCudaCall(cudaMalloc(&dev_new, i_max * sizeof(double)));
 
     printf("Got past cudaMalloc \n");
 
-    // add events to maxe the time correct
+    // add events to calculate the time
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     printf("Got past eventCreate \n");
 
     // copy data to the vectors
-    checkCudaCall(cudaMemcpy(dev_old, old_array, t_max * sizeof(double),
+    checkCudaCall(cudaMemcpy(dev_old, old_array, i_max * sizeof(double),
             cudaMemcpyHostToDevice));
-    checkCudaCall(cudaMemcpy(dev_cur, current_array, t_max * sizeof(double),
+    checkCudaCall(cudaMemcpy(dev_cur, current_array, i_max * sizeof(double),
             cudaMemcpyHostToDevice));
-    checkCudaCall(cudaMemcpy(dev_new, next_array, t_max * sizeof(double),
+    checkCudaCall(cudaMemcpy(dev_new, next_array, i_max * sizeof(double),
             cudaMemcpyHostToDevice));
 
     printf("Got past filling GPUmem \n");
@@ -121,13 +118,13 @@ double *simulate(const int i_max, const int t_max, const int block_size,
 
     printf("Got past cudaEventRecord \n");
 
-    for (int i = 1; i < i_max; i++) {
+    for (int t = 1; t < t_max; t++) {
         printf("Got in for loop \n");
         // execute kernel
-        calculate_next<<<ceil((double)t_max/block_size), block_size>>>(
-                dev_old, dev_cur, dev_new, t_max - 1, i);
+        calculate_next<<<ceil((double)i_max/block_size), block_size>>>(
+                dev_old, dev_cur, dev_new, i_max - 1, t);
 
-        printf("Calculated for i = %d \n", i);
+        printf("Calculated for t = %d \n", t);
 
         cudaThreadSynchronize();
 
@@ -138,7 +135,7 @@ double *simulate(const int i_max, const int t_max, const int block_size,
         dev_old = dev_cur;
         dev_cur = dev_new;
         dev_new = temp;
-        printf("switched arrays for i = %d \n", i);
+        printf("switched arrays for t = %d \n", t);
     }
 
     printf("Got past cudaEventRecord \n");
@@ -153,7 +150,7 @@ double *simulate(const int i_max, const int t_max, const int block_size,
     printf("Got past kernelcheck \n");
 
     // copy results back
-    checkCudaCall(cudaMemcpy(current_array, dev_cur, t_max * sizeof(double),
+    checkCudaCall(cudaMemcpy(current_array, dev_cur, i_max * sizeof(double),
             cudaMemcpyDeviceToHost));
 
     printf("Got past memcpy \n");
@@ -303,19 +300,11 @@ int main(int argc, char *argv[])
     printf("Got past arrayfilling \n");
 
 
-    vectorAddTimer.start();
-
-    printf("Got past starting of the timer \n");
-
-
     /* Call the actual simulation that should be implemented in simulate.c. */
     simulate(i_max, t_max, block_size, old, current, next);
 
     printf("Got past simulating \n");
 
-    vectorAddTimer.stop();
-
-    printf("Got past stopping of the timer \n");
 
     //printf("second timer: %f\n", vectorAddTimer);
 
