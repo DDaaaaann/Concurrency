@@ -39,6 +39,7 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
 
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
     unsigned int t_id = threadIdx.x;
+    printf("testprint\n");
 
 
     if (i >= t_max) {
