@@ -126,8 +126,6 @@ double *simulate(const int i_max, const int t_max, const int block_size,
 
         printf("Calculated for t = %d \n", t);
 
-        cudaThreadSynchronize();
-
         printf("Got past synchronize \n");
 
         // switch pointers over
