@@ -120,6 +120,7 @@ double *simulate(const int i_max, const int t_max, const int block_size,
         calculate_next<<<ceil((double)t_max/block_size), block_size>>>(
                 dev_old, dev_cur, dev_new, t_max - 1, i);
 
+        cudaSyncThreads();
 
 
         // switch pointers over
