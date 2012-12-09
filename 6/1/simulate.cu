@@ -40,27 +40,21 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
     unsigned int t_id = threadIdx.x;
     if (t_id < 2 || t_id > BLOCK_SIZE - 2) {
-        printf("IIIII caaaaaaaaannnnnnnnnnnn beeeeeeeeee %d\n", t_id);
     }
 
 
     if (i >= t_max) {
-        printf("too large i = %d   t_id = %d timestep = %d\n", blockIdx.x, t_id, timestep);
         return;
     }
 
-    printf("Got past sizechecking i = %d   t_id = %d tp= %d\n", blockIdx.x, t_id, timestep);
 
     __shared__ double s_cur[BLOCK_SIZE];
 
-    printf("Got past creating shared thing i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
 
     s_cur[t_id] = dev_cur[i];
-    printf("Got past filling shared i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
 
     __syncthreads();
 
-    printf("Got past threadsyncing i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
 
     if (t_id == 0) {
         printf("Got in first if i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
@@ -77,8 +71,6 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (s_cur[t_id - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
-
-    printf("Got past calculating i = %d   t_id = %d  tp=%d\n", blockIdx.x, t_id, timestep);
 
 }
 
