@@ -15,7 +15,9 @@
 #include "simulate.h"
 #include "simulate.h"
 
-#define BLOCK_SIZE 512
+using namespace std;
+
+#define MAX_BLOCK_SIZE 1024
 
 /* Utility function, use to do error checking.
 
@@ -39,16 +41,13 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
 
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
     unsigned int t_id = threadIdx.x;
-    if (t_id < 2 || t_id > BLOCK_SIZE - 2) {
-    }
-
 
     if (i >= i_max) {
         return;
     }
 
 
-    __shared__ double s_cur[BLOCK_SIZE];
+    __shared__ double s_cur[MAX_BLOCK_SIZE];
 
 
     s_cur[t_id] = dev_cur[i];
@@ -60,7 +59,7 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (dev_cur[i - 1] -
                 (2 * s_cur[t_id] - s_cur[t_id + 1]));
     }
-    else if (t_id == BLOCK_SIZE - 1) {
+    else if (t_id == blockDim.x - 1) {
         dev_new[i] = 2 * s_cur[t_id] - dev_old[i] + 0.2 * (s_cur[t_id - 1] -
                 (2 * s_cur[t_id] - dev_cur[i + 1]));
     }
@@ -86,22 +85,18 @@ __global__ void calculate_next(double *dev_old, double *dev_cur,
 double *simulate(const int i_max, const int t_max, const int block_size,
         double *old_array, double *current_array, double *next_array)
 {
-    printf("Got in simulation \n");
     double *dev_old, *dev_cur, *dev_new;
-    printf("Got past declaring variables \n");
 
     // allocate the vectors on the GPU
     checkCudaCall(cudaMalloc(&dev_old, i_max * sizeof(double)));
     checkCudaCall(cudaMalloc(&dev_cur, i_max * sizeof(double)));
     checkCudaCall(cudaMalloc(&dev_new, i_max * sizeof(double)));
 
-    printf("Got past cudaMalloc \n");
 
     // add events to calculate the time
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
-    printf("Got past eventCreate \n");
 
     // copy data to the vectors
     checkCudaCall(cudaMemcpy(dev_old, old_array, i_max * sizeof(double),
@@ -111,60 +106,50 @@ double *simulate(const int i_max, const int t_max, const int block_size,
     checkCudaCall(cudaMemcpy(dev_new, next_array, i_max * sizeof(double),
             cudaMemcpyHostToDevice));
 
-    printf("Got past filling GPUmem \n");
 
 
     cudaEventRecord(start, 0);
 
-    printf("Got past cudaEventRecord \n");
 
     for (int t = 1; t < t_max; t++) {
-        printf("Got in for loop \n");
         // execute kernel
         calculate_next<<<ceil((double)i_max/block_size), block_size>>>(
                 dev_old, dev_cur, dev_new, i_max - 1, t);
 
-        printf("Calculated for t = %d \n", t);
 
-        printf("Got past synchronize \n");
 
         // switch pointers over
         double *temp = dev_old;
         dev_old = dev_cur;
         dev_cur = dev_new;
         dev_new = temp;
-        printf("switched arrays for t = %d \n", t);
     }
 
-    printf("Got past cudaEventRecord \n");
 
     cudaEventRecord(stop, 0);
 
-    printf("Got past stop \n");
 
     // check whether the kernel invocation was successful
     checkCudaCall(cudaGetLastError());
 
-    printf("Got past kernelcheck \n");
 
     // copy results back
     checkCudaCall(cudaMemcpy(current_array, dev_cur, i_max * sizeof(double),
             cudaMemcpyDeviceToHost));
 
-    printf("Got past memcpy \n");
 
     checkCudaCall(cudaFree(dev_old));
     checkCudaCall(cudaFree(dev_cur));
     checkCudaCall(cudaFree(dev_new));
 
-    printf("Got past memfree \n");
 
     /* You should return a pointer to the array with the final results. */
 
     float elapsedTime;
     cudaEventElapsedTime(&elapsedTime, start, stop);
 
-    printf("kernel invocation took %f milliseconds\n", elapsedTime);
+    printf("time spent in kernel: %f miliseconds\n", elapsedTime);
+
 
     return current_array;
 }
@@ -208,7 +193,7 @@ int main(int argc, char *argv[])
 {
     double *old, *current, *next;
     int t_max, i_max, block_size;
-    timer vectorAddTimer("vector add timer");
+    timer waveform_timer("waveform timer");
 
     /* Parse commandline args: i_max t_max block_size */
     if (argc < 4) {
@@ -247,14 +232,12 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    printf("Got past argchecking \n");
 
     /* Allocate and initialize buffers. */
     old = (double *) malloc(i_max * sizeof(double));
     current = (double *) malloc(i_max * sizeof(double));
     next = (double *) malloc(i_max * sizeof(double));
 
-    printf("Got past malloc \n");
 
     if (old == NULL || current == NULL || next == NULL) {
         fprintf(stderr, "Could not allocate enough memory, aborting.\n");
@@ -265,7 +248,6 @@ int main(int argc, char *argv[])
     memset(current, 0, i_max * sizeof(double));
     memset(next, 0, i_max * sizeof(double));
 
-    printf("Got past memset \n");
 
     /* How should we will our first two generations? */
     if (argc > 4) {
@@ -295,14 +277,16 @@ int main(int argc, char *argv[])
         fill(current, 2, i_max/4, 0, 2*3.14, sin);
     }
 
-    printf("Got past arrayfilling \n");
 
+    waveform_timer.start();
 
     /* Call the actual simulation that should be implemented in simulate.c. */
     simulate(i_max, t_max, block_size, old, current, next);
 
-    printf("Got past simulating \n");
+    waveform_timer.stop();
 
+
+    cout << waveform_timer;
 
     //printf("second timer: %f\n", vectorAddTimer);
 
